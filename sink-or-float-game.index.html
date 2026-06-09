@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sink or Float? 🌊</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --sky: #87CEEB;
+    --ocean-top: #29ABE2;
+    --ocean-mid: #0077B6;
+    --ocean-deep: #023E8A;
+    --sand: #F4D03F;
+    --white: #FFFFFF;
+    --green: #2ECC71;
+    --red: #E74C3C;
+    --orange: #F39C12;
+    --purple: #9B59B6;
+    --text-dark: #1a2a4a;
+  }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: linear-gradient(180deg, var(--sky) 0%, #b8e4f9 40%);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ---- HEADER ---- */
+  header {
+    text-align: center;
+    padding: 18px 16px 10px;
+    position: relative;
+    z-index: 10;
+  }
+  header h1 {
+    font-size: clamp(2rem, 6vw, 3.2rem);
+    font-weight: 900;
+    color: var(--text-dark);
+    text-shadow: 3px 3px 0 rgba(255,255,255,0.6);
+    letter-spacing: -1px;
+  }
+  header h1 span { color: var(--ocean-mid); }
+  header p.subtitle {
+    font-size: clamp(0.85rem, 2.5vw, 1.05rem);
+    color: #4a6fa5;
+    margin-top: 4px;
+    font-weight: 700;
+  }
+
+  /* ---- SCORE BAR ---- */
+  .score-bar {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    padding: 8px 16px;
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--text-dark);
+  }
+  .score-bar .badge {
+    background: white;
+    border-radius: 20px;
+    padding: 6px 18px;
+    box-shadow: 0 3px 10px rgba(0,0,80,0.12);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 1rem;
+  }
+  .score-bar .badge .val { font-size: 1.4rem; color: var(--ocean-mid); }
+
+  /* ---- QUESTION BOX ---- */
+  .question-area {
+    text-align: center;
+    padding: 12px 16px 8px;
+  }
+  .question-bubble {
+    display: inline-block;
+    background: white;
+    border-radius: 24px;
+    padding: 14px 32px;
+    box-shadow: 0 6px 24px rgba(0,0,80,0.13);
+    font-size: clamp(1.2rem, 4vw, 1.8rem);
+    font-weight: 800;
+    color: var(--text-dark);
+    border: 3px solid var(--ocean-top);
+    position: relative;
+  }
+  .question-bubble .vn-hint {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #7f8c8d;
+    margin-top: 2px;
+    letter-spacing: 0.3px;
+  }
+
+  /* ---- OBJECT STAGE ---- */
+  .stage {
+    position: relative;
+    width: 100%;
+    max-width: 700px;
+    margin: 0 auto;
+    height: 340px;
+  }
+
+  /* Object display */
+  .object-display {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    z-index: 20;
+    transition: top 0.8s cubic-bezier(.36,.07,.19,.97);
+  }
+  .object-display.dropping {
+    top: 145px;
+  }
+  .object-display.sinking {
+    top: 260px;
+    opacity: 0;
+    transition: top 1.4s ease-in, opacity 0.6s 0.8s;
+  }
+  .object-display.floating-final {
+    top: 118px;
+    transition: top 0.9s cubic-bezier(.36,.07,.19,.97);
+  }
+
+  .object-emoji {
+    font-size: clamp(3.5rem, 10vw, 5.5rem);
+    display: block;
+    filter: drop-shadow(0 4px 8px rgba(0,0,80,0.2));
+    animation: idle-bob 2.5s ease-in-out infinite;
+  }
+  @keyframes idle-bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  .object-display.dropping .object-emoji,
+  .object-display.sinking .object-emoji,
+  .object-display.floating-final .object-emoji {
+    animation: none;
+  }
+
+  .object-name {
+    font-size: clamp(1.1rem, 3.5vw, 1.5rem);
+    font-weight: 900;
+    color: var(--text-dark);
+    background: white;
+    border-radius: 12px;
+    padding: 4px 16px;
+    margin-top: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,80,0.12);
+    display: inline-block;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* WATER */
+  .water {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 180px;
+    background: linear-gradient(180deg, var(--ocean-top) 0%, var(--ocean-mid) 40%, var(--ocean-deep) 100%);
+    border-radius: 60% 60% 0 0 / 20px 20px 0 0;
+    overflow: hidden;
+  }
+  .water::before {
+    content: '';
+    position: absolute;
+    top: -14px;
+    left: -40px;
+    right: -40px;
+    height: 30px;
+    background: rgba(255,255,255,0.35);
+    border-radius: 50%;
+    animation: wave 2.4s ease-in-out infinite;
+  }
+  .water::after {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: -20px;
+    right: -20px;
+    height: 20px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 50%;
+    animation: wave 2s ease-in-out infinite reverse;
+  }
+  @keyframes wave {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(30px); }
+  }
+
+  .water-label {
+    position: absolute;
+    bottom: 12px;
+    right: 18px;
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: rgba(255,255,255,0.55);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  /* Bubbles */
+  .bubbles { position: absolute; width: 100%; height: 100%; pointer-events: none; }
+  .bubble {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    animation: rise linear infinite;
+  }
+  @keyframes rise {
+    from { transform: translateY(0) scale(1); opacity: 0.6; }
+    to   { transform: translateY(-160px) scale(1.3); opacity: 0; }
+  }
+
+  /* ---- ANSWER BUTTONS ---- */
+  .answer-area {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    padding: 14px 16px 6px;
+    flex-wrap: wrap;
+  }
+  .answer-btn {
+    background: white;
+    border: 4px solid transparent;
+    border-radius: 20px;
+    padding: 14px 28px;
+    font-family: 'Nunito', sans-serif;
+    font-size: clamp(1rem, 3.5vw, 1.35rem);
+    font-weight: 900;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+    box-shadow: 0 5px 16px rgba(0,0,80,0.15);
+    min-width: 170px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .answer-btn:hover:not(:disabled) {
+    transform: translateY(-4px) scale(1.04);
+    box-shadow: 0 10px 24px rgba(0,0,80,0.2);
+  }
+  .answer-btn:active:not(:disabled) { transform: scale(0.97); }
+  .answer-btn:disabled { cursor: default; opacity: 0.7; }
+
+  .btn-float { border-color: var(--green); color: #1a6b3c; }
+  .btn-float:hover:not(:disabled) { background: #eafaf1; }
+  .btn-sink  { border-color: var(--red);   color: #7b1a1a; }
+  .btn-sink:hover:not(:disabled)  { background: #fdecea; }
+
+  .btn-float.correct, .btn-sink.correct {
+    background: var(--green); color: white; border-color: var(--green);
+  }
+  .btn-float.wrong, .btn-sink.wrong {
+    background: var(--red); color: white; border-color: var(--red);
+  }
+  .btn-vn {
+    font-size: 0.7rem;
+    font-weight: 700;
+    opacity: 0.65;
+    letter-spacing: 0.2px;
+  }
+  .btn-icon { font-size: 1.6rem; }
+
+  /* ---- FEEDBACK ---- */
+  .feedback-area {
+    text-align: center;
+    min-height: 70px;
+    padding: 4px 16px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .feedback-msg {
+    font-size: clamp(1.1rem, 3.5vw, 1.45rem);
+    font-weight: 900;
+    padding: 10px 28px;
+    border-radius: 18px;
+    display: none;
+    animation: popIn 0.3s cubic-bezier(.36,.07,.19,.97);
+  }
+  @keyframes popIn {
+    from { transform: scale(0.7); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+  }
+  .feedback-msg.correct { background: #d5f5e3; color: #1a6b3c; display: inline-block; }
+  .feedback-msg.wrong   { background: #fdecea; color: #7b1a1a; display: inline-block; }
+
+  .model-answer {
+    margin-top: 6px;
+    font-size: clamp(0.85rem, 2.5vw, 1rem);
+    font-weight: 700;
+    color: #4a6fa5;
+    background: #eaf3ff;
+    border-radius: 12px;
+    padding: 6px 18px;
+    display: none;
+  }
+  .model-answer.show { display: inline-block; }
+
+  /* ---- NEXT BTN ---- */
+  .next-btn {
+    display: none;
+    margin: 8px auto 0;
+    background: var(--ocean-mid);
+    color: white;
+    border: none;
+    border-radius: 18px;
+    padding: 13px 40px;
+    font-family: 'Nunito', sans-serif;
+    font-size: clamp(1rem, 3vw, 1.2rem);
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 5px 18px rgba(0,100,180,0.3);
+    transition: transform 0.15s, box-shadow 0.15s;
+    letter-spacing: 0.5px;
+  }
+  .next-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,100,180,0.35); }
+  .next-btn.show { display: block; }
+
+  /* ---- VOCAB BAR ---- */
+  .vocab-bar {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 16px 16px;
+  }
+  .vocab-chip {
+    background: white;
+    border-radius: 30px;
+    padding: 5px 14px;
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: var(--text-dark);
+    box-shadow: 0 2px 8px rgba(0,0,80,0.1);
+    border: 2px solid #d0e8ff;
+  }
+  .vocab-chip span { color: var(--ocean-mid); }
+
+  /* ---- END SCREEN ---- */
+  #end-screen {
+    display: none;
+    text-align: center;
+    padding: 24px 20px;
+    animation: popIn 0.5s;
+  }
+  #end-screen h2 {
+    font-size: clamp(1.8rem, 6vw, 2.8rem);
+    font-weight: 900;
+    color: var(--text-dark);
+    margin-bottom: 8px;
+  }
+  #end-screen .final-score {
+    font-size: clamp(2.5rem, 8vw, 4rem);
+    font-weight: 900;
+    color: var(--ocean-mid);
+  }
+  #end-screen p { font-size: 1rem; color: #4a6fa5; font-weight: 700; margin: 6px 0; }
+  .play-again-btn {
+    margin-top: 16px;
+    background: var(--ocean-mid);
+    color: white;
+    border: none;
+    border-radius: 18px;
+    padding: 14px 44px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(0,100,180,0.3);
+    transition: transform 0.15s;
+  }
+  .play-again-btn:hover { transform: translateY(-3px); }
+
+  #game-screen { display: block; }
+
+  .progress-bar-wrap {
+    max-width: 400px;
+    margin: 0 auto 4px;
+    background: rgba(255,255,255,0.5);
+    border-radius: 20px;
+    height: 10px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--ocean-mid);
+    border-radius: 20px;
+    transition: width 0.5s;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🌊 Sink or <span>Float</span>? 🌊</h1>
+  <p class="subtitle">Vật nào chìm? Vật nào nổi? — Đoán xem nào!</p>
+</header>
+
+<div id="game-screen">
+
+  <!-- Score -->
+  <div class="score-bar">
+    <div class="badge">⭐ Score: <span class="val" id="score-val">0</span></div>
+    <div class="badge">📋 <span class="val" id="q-num">1</span> / <span id="q-total">8</span></div>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-bar-wrap">
+    <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+  </div>
+
+  <!-- Question -->
+  <div class="question-area">
+    <div class="question-bubble">
+      Will it <strong>SINK</strong> or <strong>FLOAT</strong>?
+      <span class="vn-hint">Nó sẽ chìm hay nổi? — Hãy đoán và trả lời bằng tiếng Anh!</span>
+    </div>
+  </div>
+
+  <!-- Stage with water -->
+  <div class="stage">
+    <div class="object-display" id="object-display">
+      <span class="object-emoji" id="object-emoji">🍎</span>
+      <span class="object-name" id="object-name">APPLE</span>
+    </div>
+    <div class="water">
+      <div class="bubbles" id="bubbles"></div>
+      <span class="water-label">WATER 💧</span>
+    </div>
+  </div>
+
+  <!-- Answer buttons -->
+  <div class="answer-area">
+    <button class="answer-btn btn-float" id="btn-float" onclick="answer('float')">
+      <span class="btn-icon">🌊⬆️</span>
+      It will FLOAT!
+      <span class="btn-vn">Nó sẽ NỔI</span>
+    </button>
+    <button class="answer-btn btn-sink" id="btn-sink" onclick="answer('sink')">
+      <span class="btn-icon">💧⬇️</span>
+      It will SINK!
+      <span class="btn-vn">Nó sẽ CHÌM</span>
+    </button>
+  </div>
+
+  <!-- Feedback -->
+  <div class="feedback-area">
+    <div class="feedback-msg" id="feedback-msg"></div>
+    <div class="model-answer" id="model-answer"></div>
+    <button class="next-btn" id="next-btn" onclick="nextQuestion()">Next ➡️</button>
+  </div>
+
+  <!-- Vocab chips -->
+  <div class="vocab-bar">
+    <div class="vocab-chip">🌊 <span>Float</span> = Nổi</div>
+    <div class="vocab-chip">💧 <span>Sink</span> = Chìm</div>
+    <div class="vocab-chip">⚖️ <span>Heavy</span> = Nặng</div>
+    <div class="vocab-chip">🪶 <span>Light</span> = Nhẹ</div>
+    <div class="vocab-chip">💦 <span>Water</span> = Nước</div>
+  </div>
+
+</div>
+
+<!-- End screen -->
+<div id="end-screen">
+  <div style="font-size:4rem">🎉</div>
+  <h2>Great job!</h2>
+  <div class="final-score" id="final-score">0 / 8</div>
+  <p id="end-msg"></p>
+  <p style="margin-top:10px; font-size:0.95rem; color:#888;">Làm tốt lắm! Bây giờ hãy tự tạo câu với:</p>
+  <p style="font-style:italic; color: var(--ocean-mid); font-size:1rem; font-weight:800;">"I think it will _____!"</p>
+  <button class="play-again-btn" onclick="restartGame()">🔄 Play Again!</button>
+</div>
+
+<script>
+const OBJECTS = [
+  { emoji: '🍎', name: 'Apple',       answer: 'float', hint: 'Heavy → Light? Apples are mostly air inside!' },
+  { emoji: '🪙', name: 'Coin',        answer: 'sink',  hint: 'Coins are metal — very heavy!' },
+  { emoji: '🍃', name: 'Leaf',        answer: 'float', hint: 'Leaves are very light!' },
+  { emoji: '✏️', name: 'Pencil',      answer: 'float', hint: 'Wood is lighter than water!' },
+  { emoji: '🪨', name: 'Rock',        answer: 'sink',  hint: 'Rocks are very heavy!' },
+  { emoji: '🧸', name: 'Plastic Toy', answer: 'float', hint: 'Plastic is light — it floats!' },
+  { emoji: '🧹', name: 'Eraser',      answer: 'sink',  hint: 'Erasers are dense — they sink!' },
+  { emoji: '🔑', name: 'Key',         answer: 'sink',  hint: 'Metal keys are heavy!' },
+  { emoji: '🍊', name: 'Orange',      answer: 'float', hint: 'Oranges float — try it at home!' },
+  { emoji: '🔩', name: 'Bolt',        answer: 'sink',  hint: 'Metal is much heavier than water!' },
+  { emoji: '🪵', name: 'Wood',        answer: 'float', hint: 'Wood is lighter than water!' },
+  { emoji: '🥚', name: 'Egg',         answer: 'sink',  hint: 'Fresh eggs sink in plain water!' },
+];
+
+let queue = [], current = null, score = 0, qIndex = 0;
+const TOTAL = 8;
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function startGame() {
+  queue = shuffle(OBJECTS).slice(0, TOTAL);
+  score = 0; qIndex = 0;
+  document.getElementById('score-val').textContent = 0;
+  document.getElementById('q-total').textContent = TOTAL;
+  document.getElementById('game-screen').style.display = 'block';
+  document.getElementById('end-screen').style.display = 'none';
+  loadQuestion();
+}
+
+function loadQuestion() {
+  current = queue[qIndex];
+  document.getElementById('q-num').textContent = qIndex + 1;
+  document.getElementById('progress-fill').style.width = (qIndex / TOTAL * 100) + '%';
+
+  const disp = document.getElementById('object-display');
+  disp.className = 'object-display';
+  document.getElementById('object-emoji').textContent = current.emoji;
+  document.getElementById('object-name').textContent = current.name.toUpperCase();
+
+  // reset buttons
+  const bf = document.getElementById('btn-float');
+  const bs = document.getElementById('btn-sink');
+  bf.className = 'answer-btn btn-float'; bf.disabled = false;
+  bs.className = 'answer-btn btn-sink';  bs.disabled = false;
+
+  document.getElementById('feedback-msg').className = 'feedback-msg';
+  document.getElementById('feedback-msg').textContent = '';
+  document.getElementById('model-answer').className = 'model-answer';
+  document.getElementById('model-answer').textContent = '';
+  document.getElementById('next-btn').className = 'next-btn';
+
+  // restart bubble animation
+  spawnBubbles(false);
+}
+
+function answer(choice) {
+  if (!current) return;
+  const correct = choice === current.answer;
+
+  // disable buttons
+  document.getElementById('btn-float').disabled = true;
+  document.getElementById('btn-sink').disabled  = true;
+
+  // style buttons
+  const chosenBtn = document.getElementById(choice === 'float' ? 'btn-float' : 'btn-sink');
+  const otherBtn  = document.getElementById(choice === 'float' ? 'btn-sink'  : 'btn-float');
+  chosenBtn.classList.add(correct ? 'correct' : 'wrong');
+
+  // animate object
+  const disp = document.getElementById('object-display');
+  if (correct && current.answer === 'float') {
+    disp.classList.add('floating-final');
+  } else if (current.answer === 'sink') {
+    disp.classList.add('dropping');
+    setTimeout(() => disp.classList.add('sinking'), 600);
+    spawnBubbles(true);
+  } else {
+    // wrong: just shake
+    disp.style.animation = 'shake 0.4s';
+    setTimeout(() => disp.style.animation = '', 400);
+  }
+
+  // feedback
+  const fb = document.getElementById('feedback-msg');
+  if (correct) {
+    score++;
+    document.getElementById('score-val').textContent = score;
+    fb.textContent = ['⭐ Excellent!', '🎉 Great job!', '✅ Correct!', '🌟 Amazing!'][Math.floor(Math.random()*4)];
+    fb.className = 'feedback-msg correct';
+  } else {
+    fb.textContent = ['❌ Not quite!', '😅 Try next time!', '💪 Keep going!'][Math.floor(Math.random()*3)];
+    fb.className = 'feedback-msg wrong';
+    // show correct answer button highlight
+    otherBtn.classList.add('correct');
+  }
+
+  // model answer sentence
+  const ma = document.getElementById('model-answer');
+  const ansWord = current.answer === 'float' ? 'float' : 'sink';
+  ma.textContent = `💬 "It will ${ansWord}!" — ${current.hint}`;
+  ma.classList.add('show');
+
+  // next button
+  setTimeout(() => {
+    document.getElementById('next-btn').classList.add('show');
+  }, 400);
+}
+
+function nextQuestion() {
+  qIndex++;
+  if (qIndex >= TOTAL) {
+    endGame();
+  } else {
+    loadQuestion();
+  }
+}
+
+function endGame() {
+  document.getElementById('game-screen').style.display = 'none';
+  document.getElementById('end-screen').style.display = 'block';
+  document.getElementById('final-score').textContent = score + ' / ' + TOTAL;
+  const pct = score / TOTAL;
+  let msg = '';
+  if (pct === 1)       msg = '🏆 Perfect score! You\'re a Water Science Star!';
+  else if (pct >= 0.75) msg = '🌟 Wonderful! You know your sinking & floating!';
+  else if (pct >= 0.5)  msg = '👍 Good effort! Practice makes perfect!';
+  else                  msg = '💪 Keep practicing — you\'ll get it!';
+  document.getElementById('end-msg').textContent = msg;
+  document.getElementById('progress-fill').style.width = '100%';
+}
+
+function restartGame() { startGame(); }
+
+// Bubble generator
+function spawnBubbles(burst) {
+  const container = document.getElementById('bubbles');
+  container.innerHTML = '';
+  const count = burst ? 14 : 5;
+  for (let i = 0; i < count; i++) {
+    const b = document.createElement('div');
+    b.className = 'bubble';
+    const size = 6 + Math.random() * 14;
+    b.style.width = size + 'px';
+    b.style.height = size + 'px';
+    b.style.left = (10 + Math.random() * 80) + '%';
+    b.style.bottom = (5 + Math.random() * 30) + 'px';
+    const dur = 1.5 + Math.random() * 2;
+    b.style.animationDuration = dur + 's';
+    b.style.animationDelay = (Math.random() * (burst ? 0.3 : 1.5)) + 's';
+    container.appendChild(b);
+  }
+}
+
+// Shake keyframes
+const style = document.createElement('style');
+style.textContent = `@keyframes shake {
+  0%,100%{transform:translateX(-50%)}
+  20%{transform:translateX(-50%) translateX(-8px)}
+  40%{transform:translateX(-50%) translateX(8px)}
+  60%{transform:translateX(-50%) translateX(-6px)}
+  80%{transform:translateX(-50%) translateX(6px)}
+}`;
+document.head.appendChild(style);
+
+// INIT
+startGame();
+</script>
+</body>
+</html>
